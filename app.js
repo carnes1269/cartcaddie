@@ -1,5 +1,5 @@
 "use strict";
-const APP_VERSION = "3";   // shown in the Menu so you can tell which version the iPad is running
+const APP_VERSION = "4";   // shown in the Menu so you can tell which version the iPad is running
 // Cart Caddie for iPad. The caddie itself (club picks, shot patterns, hazards, slopes, your history) is the
 // cart's own code compiled to WebAssembly (caddie.wasm); this file is the iPad screen around it.
 
