@@ -281,6 +281,15 @@ function sidePlacing() {
   h += `<div class="spacer"></div><div class="row r2"><button id="bUndo" ${S.nShots ? "" : "disabled"} style="min-height:84px">UNDO</button><button class="acc hit" id="bDone">DONE</button></div>`;
   return h;
 }
+// LEFT / SHORT / LONG / RIGHT: 1 yd a tap, hold to keep moving 5 yds at a time.
+// The buttons are not redrawn while you press them, and letting go anywhere stops the repeat.
+const NUDGE = { tmr: null, rep: null };
+function nudgeStop() { clearTimeout(NUDGE.tmr); clearInterval(NUDGE.rep); NUDGE.tmr = NUDGE.rep = null; }
+function nudgeOnce(k, yds) { if (!S || !S.placing || !S.adjusting) { nudgeStop(); return; } call("ip_nudge", k, yds); refresh(); updatePlacingText(); drawMap(); }
+function nudgeStart(k) { nudgeStop(); nudgeOnce(k, 1); NUDGE.tmr = setTimeout(() => { NUDGE.rep = setInterval(() => nudgeOnce(k, 5), 260); }, 450); }
+for (const ev of ["pointerup", "pointercancel", "blur"]) window.addEventListener(ev, nudgeStop);
+document.addEventListener("visibilitychange", nudgeStop);
+function updatePlacingText() { const s = document.querySelector("#side .banner .s"); if (s) s.textContent = S.lieNow === L_GREEN ? `${r0(S.toPin * 3)} ft to the hole - Green` : `${r0(S.toPin)} to pin - ${S.lieName}`; }
 function renderSide() {
   const side = $("#side"); side.innerHTML = S.placing ? sidePlacing() : sideNormal();
   const on = (id, f) => { const b = $("#" + id, side); if (b) b.onclick = f; };
@@ -295,9 +304,7 @@ function renderSide() {
   on("bMark", () => { act("ip_place", UI.you.x, UI.you.y, 1); toast("Ball placed at your location"); });
   side.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => act("ip_opt", +b.dataset.opt));
   side.querySelectorAll("[data-putts]").forEach(b => b.onclick = () => { const n = +b.dataset.putts; const ask = act("ip_putts", n); if (ask) openPutt2(); else afterScore(); });
-  side.querySelectorAll("[data-nudge]").forEach(b => { let tmr = null, rep = null; const k = +b.dataset.nudge;
-    b.onpointerdown = () => { act("ip_nudge", k, 1); tmr = setTimeout(() => { rep = setInterval(() => act("ip_nudge", k, 5), 260); }, 450); };
-    b.onpointerup = b.onpointerleave = b.onpointercancel = () => { clearTimeout(tmr); clearInterval(rep); }; b.onclick = null; });
+  side.querySelectorAll("[data-nudge]").forEach(b => { b.onpointerdown = (e) => { e.preventDefault(); nudgeStart(+b.dataset.nudge); }; });
   $("#maptools").innerHTML = S.placing ? "" : `<button class="pill ${S.dots ? "on" : ""}" id="pDots">${["Dots off", "Dots small", "Dots big"][S.dots]}</button>${hole().greens.length > 1 ? hole().greens.map((g, i) => `<button class="pill ${S.holes[S.rh].gsel % hole().greens.length === i ? "on" : ""}" data-green="${i}">${esc(g.name)}</button>`).join("") : ""}${UI.user.z !== 1 || UI.user.dx || UI.user.dy ? `<button class="pill" id="pReset">Reset view</button>` : ""}`;
   const pd = $("#pDots"); if (pd) pd.onclick = () => act("ip_dots", (S.dots + 1) % 3);
   const pr = $("#pReset"); if (pr) pr.onclick = () => { UI.user = { z: 1, dx: 0, dy: 0 }; renderAll(); };
@@ -307,7 +314,7 @@ function renderSide() {
 function gotoHole(r) { UI.view = "hole"; UI.user = { z: 1, dx: 0, dy: 0 }; act("ip_goto", (r + 18) % 18); }
 function afterScore() { if (S.allScored || S.scr === 14) { showRoundDone(); return; } UI.view = "hole"; UI.user = { z: 1, dx: 0, dy: 0 }; renderAll(); }
 function renderAll() {
-  if (!S) return;
+  if (!S) return; nudgeStop();
   if (S.scr === 0) { show("setup"); renderSetup(); return; }
   if (S.scr === 14 && !UI.reviewing) { showRoundDone(); return; }
   show("play");
