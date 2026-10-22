@@ -1,5 +1,5 @@
 "use strict";
-const APP_VERSION = "5";   // shown in the Menu so you can tell which version the iPad is running
+const APP_VERSION = "6";   // shown in the Menu so you can tell which version the iPad is running
 // Cart Caddie for iPad. The caddie itself (club picks, shot patterns, hazards, slopes, your history) is the
 // cart's own code compiled to WebAssembly (caddie.wasm); this file is the iPad screen around it.
 
@@ -172,7 +172,9 @@ function drawMap() {
     const ux = o.aim[0] - S.ball[0], uy = o.aim[1] - S.ball[1]; const rot = Math.atan2(-uy, ux);
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.ellipse(ax, ay, Math.max(10, o.sdL * s), Math.max(10, o.sdX * s), rot, 0, 7); ctx.stroke(); ctx.setLineDash([]);
     ring(ax, ay, 16, "#fff", 3); disc(ax, ay, 7, "#3ddc84");
-    const lx = ax + Math.max(10, o.sdX * s, o.sdL * s) + 14; tag(`${r0(o.dist)} yds`, lx, ay - 14, "rgba(8,14,10,.88)", "#fff", "left", 18);
+    const lx = ax + Math.max(10, o.sdX * s, o.sdL * s) + 14;
+    // the target in club yards (what your bag numbers mean); the real distance as well when the tee height or wind changes it
+    tag(Math.abs(r0(o.plays) - r0(o.dist)) >= 3 ? `${r0(o.plays)} yds (${r0(o.dist)} actual)` : `${r0(o.dist)} yds`, lx, ay - 14, "rgba(8,14,10,.88)", "#fff", "left", 18);
     if (S.toPin - o.dist > 25) tag(`leaves ${r0(S.leave > 0 ? S.leave : o.left)}`, lx, ay + 16, "rgba(15,42,28,.92)", "#3ddc84", "left", 18);
   } else if (!S.placing && S.lie !== L_GREEN) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke(); }
   if (S.lie === L_GREEN && !S.placing) { ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 2; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]); }
@@ -252,7 +254,7 @@ function sideNormal() {
   else if (S.lie === L_GREEN) { const sl = S.slope; let t = "Fairly flat"; if (sl && sl.sev >= 0.6) { t = sl.along > 0.4 ? "Downhill" : sl.along < -0.4 ? "Uphill" : "Sidehill"; t += sl.cross > 0.3 ? ", breaks right" : sl.cross < -0.3 ? ", breaks left" : ""; }
     h += `<div class="card"><div class="k">ON THE GREEN</div><div class="big">${r0(S.toPin * 3)} ft to the hole</div><div class="pat">${t}</div></div>`; }
   else if (o) { const pt = [3, 4, 5].includes(o.kind);
-    let right = ""; if (o.custom || o.layup) right = `${r0(o.dist)} to target`; else if (Math.abs(r0(S.plays) - r0(S.toPin)) >= 2) right = `pin plays ${r0(S.plays)}`;
+    let right = ""; if (o.custom || o.layup) right = `target plays ${r0(o.plays)}`; else if (Math.abs(r0(S.plays) - r0(S.toPin)) >= 2) right = `pin plays ${r0(S.plays)}`;
     const wind = S.windSpd ? `Wind ${S.windHead >= 0 ? "into" : "helping"} ${r0(Math.abs(S.windHead))}, ${S.windCross >= 0 ? "L-R" : "R-L"} ${r0(Math.abs(S.windCross))}` : "";
     h += `<div class="card"><div class="k"><span>CADDIE &middot; ${o.custom ? "your target" : esc(LIE[S.lie])}</span><span class="r">${right}</span></div>
       <div class="big">${o.kind === 6 ? `Putter &middot; ${r0(o.dist * 3)} ft` : `${esc(o.name)} &middot; ${pt ? "play to" : "carry"} ${r0(pt ? o.plays : o.carry)}`}</div>
