@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cart Caddie">
+<meta name="theme-color" content="#0e1410">
+<title>Cart Caddie</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="boot" class="boot"><div class="bootlogo">CART CADDIE</div><div id="bootmsg">Starting...</div></div>
+
+<!-- play: big map on the left, the caddie on the right -->
+<div id="play" class="play" hidden>
+  <div class="mapwrap" id="mapwrap">
+    <canvas id="map"></canvas>
+    <div class="maptools" id="maptools"></div>
+    <div class="mapnote" id="mapnote"></div>
+  </div>
+  <aside class="side" id="side"></aside>
+</div>
+
+<!-- start a round -->
+<div id="setup" class="page" hidden></div>
+<!-- round history -->
+<div id="history" class="page hist" hidden></div>
+
+<div id="modal" class="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="course.js"></script>
+<script src="app.js"></script>
+<script src="history.js"></script>
+</body>
+</html>
