@@ -1,4 +1,5 @@
 "use strict";
+const APP_VERSION = "3";   // shown in the Menu so you can tell which version the iPad is running
 // Cart Caddie for iPad. The caddie itself (club picks, shot patterns, hazards, slopes, your history) is the
 // cart's own code compiled to WebAssembly (caddie.wasm); this file is the iPad screen around it.
 
@@ -283,11 +284,13 @@ function sidePlacing() {
 }
 // LEFT / SHORT / LONG / RIGHT: 1 yd a tap, hold to keep moving 5 yds at a time.
 // The buttons are not redrawn while you press them, and letting go anywhere stops the repeat.
-const NUDGE = { tmr: null, rep: null };
+const NUDGE = { tmr: null, rep: null, t0: 0 };
 function nudgeStop() { clearTimeout(NUDGE.tmr); clearInterval(NUDGE.rep); NUDGE.tmr = NUDGE.rep = null; }
 function nudgeOnce(k, yds) { if (!S || !S.placing || !S.adjusting) { nudgeStop(); return; } call("ip_nudge", k, yds); refresh(); updatePlacingText(); drawMap(); }
-function nudgeStart(k) { nudgeStop(); nudgeOnce(k, 1); NUDGE.tmr = setTimeout(() => { NUDGE.rep = setInterval(() => nudgeOnce(k, 5), 260); }, 450); }
-for (const ev of ["pointerup", "pointercancel", "blur"]) window.addEventListener(ev, nudgeStop);
+function nudgeStart(k) { nudgeStop(); nudgeOnce(k, 1); NUDGE.t0 = Date.now();
+  NUDGE.tmr = setTimeout(() => { NUDGE.rep = setInterval(() => { if (Date.now() - NUDGE.t0 > 4000) { nudgeStop(); return; } nudgeOnce(k, 5); }, 260); }, 500); }
+// any finger lifting anywhere stops the repeat (touch and pointer events both, for iPad Safari)
+for (const ev of ["pointerup", "pointercancel", "touchend", "touchcancel", "mouseup", "blur"]) window.addEventListener(ev, nudgeStop, true);
 document.addEventListener("visibilitychange", nudgeStop);
 function updatePlacingText() { const s = document.querySelector("#side .banner .s"); if (s) s.textContent = S.lieNow === L_GREEN ? `${r0(S.toPin * 3)} ft to the hole - Green` : `${r0(S.toPin)} to pin - ${S.lieName}`; }
 function renderSide() {
@@ -304,7 +307,7 @@ function renderSide() {
   on("bMark", () => { act("ip_place", UI.you.x, UI.you.y, 1); toast("Ball placed at your location"); });
   side.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => act("ip_opt", +b.dataset.opt));
   side.querySelectorAll("[data-putts]").forEach(b => b.onclick = () => { const n = +b.dataset.putts; const ask = act("ip_putts", n); if (ask) openPutt2(); else afterScore(); });
-  side.querySelectorAll("[data-nudge]").forEach(b => { b.onpointerdown = (e) => { e.preventDefault(); nudgeStart(+b.dataset.nudge); }; });
+  side.querySelectorAll("[data-nudge]").forEach(b => { b.onpointerdown = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (x) {} nudgeStart(+b.dataset.nudge); }; b.onpointerup = b.onpointercancel = b.onlostpointercapture = nudgeStop; b.oncontextmenu = (e) => e.preventDefault(); });
   $("#maptools").innerHTML = S.placing ? "" : `<button class="pill ${S.dots ? "on" : ""}" id="pDots">${["Dots off", "Dots small", "Dots big"][S.dots]}</button>${hole().greens.length > 1 ? hole().greens.map((g, i) => `<button class="pill ${S.holes[S.rh].gsel % hole().greens.length === i ? "on" : ""}" data-green="${i}">${esc(g.name)}</button>`).join("") : ""}${UI.user.z !== 1 || UI.user.dx || UI.user.dy ? `<button class="pill" id="pReset">Reset view</button>` : ""}`;
   const pd = $("#pDots"); if (pd) pd.onclick = () => act("ip_dots", (S.dots + 1) % 3);
   const pr = $("#pReset"); if (pr) pr.onclick = () => { UI.user = { z: 1, dx: 0, dy: 0 }; renderAll(); };
@@ -389,7 +392,7 @@ function openMenu() {
     <h2 class="note" style="margin:14px 0 6px">Tee</h2><div class="seg">${[0, 1, 2, 3, 4].map(t => `<button data-tee="${t}" class="${t === S.tee ? "on" : ""}">${t + 1}</button>`).join("")}</div>
     <h2 class="note" style="margin:14px 0 6px">Location</h2><div class="seg"><button id="mGps" class="${UI.gpsOn ? "on" : ""}">${UI.gpsOn ? "Using iPad location" : "Use iPad location"}</button></div>
     <p class="note" id="gpsInfo"></p>
-    <div class="menu-grid" style="margin-top:14px"><button id="mHist">Round history</button><button id="mNew">New round</button>${S.allScored ? `<button id="mDone" class="acc">Round summary</button>` : ""}<button id="mBackup">Backup &amp; export</button></div>`, false, (sh) => {
+    <p class="note" style="margin-top:10px">Cart Caddie for iPad - version ${APP_VERSION}</p><div class="menu-grid" style="margin-top:14px"><button id="mHist">Round history</button><button id="mNew">New round</button>${S.allScored ? `<button id="mDone" class="acc">Round summary</button>` : ""}<button id="mBackup">Backup &amp; export</button></div>`, false, (sh) => {
     const wt = () => { $("#wTxt", sh).textContent = S.windSpd ? `${S.windSpd} mph from ${WIND_DIR[S.windDir]}` : "Calm"; sh.querySelectorAll("[data-w]").forEach(b => b.className = S.windSpd && +b.dataset.w === S.windDir ? "on" : ""); };
     wt(); $("#wMinus", sh).onclick = () => { act("ip_wind", S.windSpd - 1, S.windDir); wt(); }; $("#wPlus", sh).onclick = () => { act("ip_wind", S.windSpd + 1, S.windDir); wt(); };
     sh.querySelectorAll("[data-w]").forEach(b => b.onclick = () => { act("ip_wind", S.windSpd || 5, +b.dataset.w); wt(); });
@@ -523,7 +526,11 @@ async function boot() {
     window.addEventListener("resize", () => { sizeMap(); if (S && S.scr !== 0) drawMap(); });
     if (kvGet("u:gps", 0)) setGps(true);
     renderAll();
-    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+      // a new version was just downloaded: switch to it straight away (your round is already saved)
+      const hadOld = !!navigator.serviceWorker.controller; let switched = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadOld && !switched) { switched = true; location.reload(); } });
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => r.update()).catch(() => {}); }
   } catch (e) { $("#bootmsg").textContent = "Couldn't start: " + e.message; console.error(e); }
 }
 boot();
