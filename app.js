@@ -1,5 +1,5 @@
 "use strict";
-const APP_VERSION = "6";   // shown in the Menu so you can tell which version the iPad is running
+const APP_VERSION = "7";   // shown in the Menu so you can tell which version the iPad is running
 // Cart Caddie for iPad. The caddie itself (club picks, shot patterns, hazards, slopes, your history) is the
 // cart's own code compiled to WebAssembly (caddie.wasm); this file is the iPad screen around it.
 
@@ -366,7 +366,7 @@ function openPutt2() {
   openModal(`<div class="top"><h3>How long was your 2nd putt?</h3></div><p class="note">${p > 2 ? `Putts 3${p > 3 ? " and 4" : ""} count as 1 ft.` : "For your putting stats."}</p>
     <div class="keys" style="grid-template-columns:repeat(5,1fr)">${PQ_FT.map(f => `<button data-f="${f}" style="font-size:1.4rem">${f}${f === 40 ? "+" : ""} ft</button>`).join("")}</div>
     <p><button data-f="0" class="ghost" style="width:100%">Don't know - skip</button></p>`, false, (sh) => {
-    sh.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { closeModal(); act("ip_putt2", +b.dataset.f); afterScore(); }); });
+    sh.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { if (window.Voice) Voice.setExpect(null); closeModal(); act("ip_putt2", +b.dataset.f); afterScore(); }); });
 }
 function pinSheet(p) { const g = greenOf(); const f = [g.front[0] / 10, g.front[1] / 10], b = [g.back[0] / 10, g.back[1] / 10]; let u = [b[0] - f[0], b[1] - f[1]]; const L = Math.hypot(u[0], u[1]) || 1; u = [u[0] / L, u[1] / L]; const r = [u[1], -u[0]];
   const on = (p[0] - f[0]) * u[0] + (p[1] - f[1]) * u[1], lat = (p[0] - f[0]) * r[0] + (p[1] - f[1]) * r[1]; return `${r0(on)} on, ${Math.abs(lat) < 0.5 ? "centre" : r0(Math.abs(lat)) + (lat > 0 ? " right" : " left")}`; }
@@ -394,7 +394,7 @@ function openMenu() {
     <h2 class="note" style="margin:14px 0 6px">Tee</h2><div class="seg">${[0, 1, 2, 3, 4].map(t => `<button data-tee="${t}" class="${t === S.tee ? "on" : ""}">${t + 1}</button>`).join("")}</div>
     <h2 class="note" style="margin:14px 0 6px">Location</h2><div class="seg"><button id="mGps" class="${UI.gpsOn ? "on" : ""}">${UI.gpsOn ? "Using iPad location" : "Use iPad location"}</button></div>
     <p class="note" id="gpsInfo"></p>
-    <p class="note" style="margin-top:10px">Cart Caddie for iPad - version ${APP_VERSION}</p><div class="menu-grid" style="margin-top:14px"><button id="mHist">Round history</button><button id="mNew">New round</button>${S.allScored ? `<button id="mDone" class="acc">Round summary</button>` : ""}<button id="mBackup">Backup &amp; export</button></div>`, false, (sh) => {
+    <p class="note" style="margin-top:10px">Cart Caddie for iPad - version ${APP_VERSION}</p><div class="menu-grid" style="margin-top:14px"><button id="mHist">Round history</button><button id="mVoice">Voice commands</button><button id="mNew">New round</button>${S.allScored ? `<button id="mDone" class="acc">Round summary</button>` : ""}<button id="mBackup">Backup &amp; export</button></div>`, false, (sh) => {
     const wt = () => { $("#wTxt", sh).textContent = S.windSpd ? `${S.windSpd} mph from ${WIND_DIR[S.windDir]}` : "Calm"; sh.querySelectorAll("[data-w]").forEach(b => b.className = S.windSpd && +b.dataset.w === S.windDir ? "on" : ""); };
     wt(); $("#wMinus", sh).onclick = () => { act("ip_wind", S.windSpd - 1, S.windDir); wt(); }; $("#wPlus", sh).onclick = () => { act("ip_wind", S.windSpd + 1, S.windDir); wt(); };
     sh.querySelectorAll("[data-w]").forEach(b => b.onclick = () => { act("ip_wind", S.windSpd || 5, +b.dataset.w); wt(); });
@@ -403,6 +403,7 @@ function openMenu() {
     $("#mGps", sh).onclick = () => { setGps(!UI.gpsOn); closeModal(); };
     $("#gpsInfo", sh).textContent = gpsInfo();
     $("#mHist", sh).onclick = () => { closeModal(); openHistory(); };
+    $("#mVoice", sh).onclick = () => { closeModal(); openVoiceHelp(); };
     $("#mNew", sh).onclick = () => { const go = () => { closeModal(); act("ip_newRound"); }; if (S.hasData && !S.allScored) ask("Start a new round?", "The round you're playing is saved in your history as it is.", "New round", go); else go(); };
     const md = $("#mDone", sh); if (md) md.onclick = () => { closeModal(); showRoundDone(); };
     $("#mBackup", sh).onclick = () => { closeModal(); openBackup(); }; });
